@@ -22,8 +22,10 @@ Trang cần được mở qua http(s), không mở trực tiếp bằng file://.
 |---|---|
 | `index.html` | Giao diện (HTML/CSS/JS thuần, không cần build) |
 | `src/worker.js` | Web Worker: tải mô hình, chạy ONNX Runtime, ghép stem |
-| `src/vendor/` | STFT + chia đoạn của demucs-js (MIT) |
-| `dist/worker.js` | Worker đã bundle (esbuild) kèm onnxruntime-web 1.22.0 |
+| `src/chunk.js`, `src/fastdsp.js` | STFT/ISTFT nhanh (khớp `torch.stft`/`istft` của demucs) và xử lý trước/sau mỗi đoạn |
+| `src/dsp-worker.js` | Worker phụ chạy STFT/ISTFT song song khi GPU đang chạy mô hình |
+| `src/vendor/` | Code gốc của demucs-js (MIT), không còn dùng, giữ để tham khảo |
+| `dist/worker.js`, `dist/dsp-worker.js` | Worker đã bundle (esbuild) kèm onnxruntime-web 1.22.0 |
 | `model/htdemucs.graph.wasm` | Đồ thị mô hình ONNX, trọng số để ngoài (`weights.bin`) |
 | `model/w16.*.wasm` | Trọng số lưu dạng float16, chia 6 phần ≤ 14 MB; worker đổi lại float32 khi nạp |
 | `ort/ort-wasm.*.wasm` | File WASM của ONNX Runtime (bản WebGPU/JSEP) chia 2 phần |
@@ -31,11 +33,15 @@ Trang cần được mở qua http(s), không mở trực tiếp bằng file://.
 
 Các file lớn được chia nhỏ để vừa giới hạn 15 MB/file khi đăng lên claude.ai. Lưu trọng số dạng float16 làm sai lệch đầu ra khoảng 0,01% so với float32.
 
+## Tốc độ
+
+Mô hình chạy hoàn toàn trên GPU (mọi node của đồ thị đều được gán cho WebGPU). Phần STFT trước và ISTFT sau mỗi đoạn 7,8 giây chạy trên CPU, trong 1–3 worker phụ, song song với lúc GPU chạy đoạn kế tiếp, nên GPU không phải chờ CPU. Trang chọn GPU rời (`powerPreference: 'high-performance'`). Khi xong, console in ra số giây mô hình chạy cho mỗi đoạn.
+
 ## Build lại worker
 
 ```sh
 npm i esbuild@0.24.2 onnxruntime-web@1.22.0
-npx esbuild src/worker.js --bundle --format=esm --minify --outfile=dist/worker.js
+npx esbuild src/worker.js src/dsp-worker.js --bundle --format=esm --minify --outdir=dist
 # tách lại file wasm nếu đổi phiên bản onnxruntime-web
 W=node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm
 head -c 11000000 $W > ort/ort-wasm.0.wasm && tail -c +11000001 $W > ort/ort-wasm.1.wasm
