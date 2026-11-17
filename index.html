@@ -1,0 +1,365 @@
+<meta charset="utf-8">
+<title>Tách Vocal &amp; Beat</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow console column; a source strip on top, two stem channels below, each stem keeps its own colour throughout. */
+:root {
+  --bg: #f3f4f7;
+  --panel: #ffffff;
+  --ink: #161a24;
+  --muted: #5b6273;
+  --line: #dde0e8;
+  --vocal: #d9480f;
+  --vocal-soft: #fde8de;
+  --inst: #0b7a75;
+  --inst-soft: #d9f1ef;
+  --focus: #3a5bd9;
+  --danger: #b42318;
+  --wave-bg: #eef0f5;
+  --font-body: "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10131b; --panel: #181c27; --ink: #eceef4; --muted: #9aa1b2; --line: #2a3040;
+    --vocal: #ff8a4c; --vocal-soft: #3a2218; --inst: #3cc9c0; --inst-soft: #11312f;
+    --focus: #8ea6ff; --danger: #ff7b6e; --wave-bg: #131722; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10131b; --panel: #181c27; --ink: #eceef4; --muted: #9aa1b2; --line: #2a3040;
+  --vocal: #ff8a4c; --vocal-soft: #3a2218; --inst: #3cc9c0; --inst-soft: #11312f;
+  --focus: #8ea6ff; --danger: #ff7b6e; --wave-bg: #131722; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 40px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 24px; }
+header { display: grid; gap: 8px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font-size: clamp(30px, 6vw, 44px); line-height: 1.1; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+h1 .v { color: var(--vocal); } h1 .i { color: var(--inst); }
+.lede { margin: 0; color: var(--muted); max-width: 60ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; min-width: 0; }
+
+.drop { border: 2px dashed var(--line); border-radius: 12px; padding: 32px 16px; text-align: center; cursor: pointer;
+  display: grid; gap: 6px; justify-items: center; transition: border-color .15s, background .15s; }
+.drop:hover, .drop.over { border-color: var(--focus); background: var(--wave-bg); }
+.drop:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.drop strong { font-size: 17px; }
+.drop small { color: var(--muted); }
+.drop svg { width: 40px; height: 40px; color: var(--muted); }
+
+.opts { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { padding: 6px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; color: var(--muted); }
+.seg input:checked + label { background: var(--ink); color: var(--panel); }
+.seg input:focus-visible + label { outline: 2px solid var(--focus); }
+.optlabel { font-size: 13px; color: var(--muted); margin-right: 8px; }
+.check { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); }
+
+.file { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.file .name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; flex: 1 1 200px; }
+.mono { font-family: var(--font-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 9px 16px; font-weight: 600; }
+button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+button.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); padding: 12px 22px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+.progress { display: grid; gap: 8px; }
+.bar { height: 8px; border-radius: 99px; background: var(--wave-bg); overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--vocal), var(--inst)); transition: width .25s; }
+.prow { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.error { color: var(--danger); font-weight: 500; margin: 0; }
+
+.stems { display: grid; gap: 16px; }
+.stem { --c: var(--ink); --soft: var(--wave-bg); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 12px; min-width: 0; }
+.stem.vocal { --c: var(--vocal); --soft: var(--vocal-soft); }
+.stem.inst { --c: var(--inst); --soft: var(--inst-soft); }
+.stem-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.stem-head h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--c); }
+.stem-head .tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; background: var(--soft); color: var(--c); padding: 2px 8px; border-radius: 6px; }
+.stem-head .sp { flex: 1; }
+canvas.wave { width: 100%; height: 72px; display: block; border-radius: 8px; background: var(--soft); }
+.stem audio { width: 100%; height: 40px; }
+.stem .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.stem .dl { border-color: var(--c); color: var(--c); }
+.stem.empty canvas { opacity: .5; }
+.stem.empty .hint { color: var(--muted); font-size: 14px; margin: 0; }
+
+.notes { color: var(--muted); font-size: 13.5px; display: grid; gap: 6px; }
+.notes p { margin: 0; max-width: 70ch; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">AI · chạy ngay trên trình duyệt</span>
+    <h1>Tách <span class="v">vocal</span> và <span class="i">nhạc nền</span></h1>
+    <p class="lede">Thả một bài hát vào, mô hình Demucs v4 sẽ tách giọng hát ra khỏi phần nhạc. File không rời khỏi máy bạn.</p>
+  </header>
+
+  <section class="panel" aria-label="Chọn bài hát">
+    <div class="drop" id="drop" tabindex="0" role="button" aria-describedby="dropHint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      <strong>Thả file nhạc vào đây hoặc bấm để chọn</strong>
+      <small id="dropHint">MP3, WAV, FLAC, M4A, OGG · tối đa 10 phút</small>
+    </div>
+    <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.flac,.m4a,.ogg,.aac" hidden>
+
+    <div class="file" id="fileRow" hidden>
+      <span class="name" id="fileName"></span>
+      <span class="mono" id="fileMeta"></span>
+    </div>
+
+    <div class="opts">
+      <div>
+        <span class="optlabel" id="qLabel">Chất lượng</span>
+        <span class="seg" role="radiogroup" aria-labelledby="qLabel">
+          <input type="radio" name="q" id="qFast" value="0.1"><label for="qFast">Nhanh</label>
+          <input type="radio" name="q" id="qStd" value="0.25" checked><label for="qStd">Chuẩn</label>
+        </span>
+      </div>
+      <label class="check"><input type="checkbox" id="useGpu" checked> Dùng GPU (WebGPU) nếu có</label>
+    </div>
+
+    <div><button class="primary" id="go" disabled>Tách vocal</button></div>
+
+    <div class="progress" id="progress" hidden>
+      <div class="prow"><span id="pText">Đang chuẩn bị…</span><span class="mono" id="pRight"></span></div>
+      <div class="bar"><i id="pBar"></i></div>
+    </div>
+    <p class="error" id="err" role="alert" hidden></p>
+  </section>
+
+  <section class="stems" aria-label="Kết quả">
+    <article class="stem vocal empty" id="stemVocal">
+      <div class="stem-head"><h2>Vocal</h2><span class="tag">giọng hát</span><span class="sp"></span><span class="mono" data-info></span></div>
+      <canvas class="wave" aria-hidden="true"></canvas>
+      <p class="hint">Giọng hát tách riêng sẽ hiện ở đây.</p>
+      <audio controls preload="metadata" hidden></audio>
+      <div class="actions" hidden><button class="dl" data-dl="vocals">Tải vocal (WAV)</button></div>
+    </article>
+    <article class="stem inst empty" id="stemInst">
+      <div class="stem-head"><h2>Nhạc nền</h2><span class="tag">beat / karaoke</span><span class="sp"></span><span class="mono" data-info></span></div>
+      <canvas class="wave" aria-hidden="true"></canvas>
+      <p class="hint">Phần nhạc không lời (trống, bass, nhạc cụ) sẽ hiện ở đây.</p>
+      <audio controls preload="metadata" hidden></audio>
+      <div class="actions" hidden><button class="dl" data-dl="inst">Tải nhạc nền (WAV)</button></div>
+    </article>
+    <div><button id="dlBoth" hidden>Tải cả hai file</button></div>
+  </section>
+
+  <footer class="notes">
+    <p>Lần đầu dùng, trang tải mô hình khoảng 110 MB và lưu lại cho lần sau. Có GPU (Chrome, Edge) thì nhanh hơn thời lượng bài hát. Không có GPU, máy chạy bằng CPU và mất khoảng 4–5 lần thời lượng bài (bài 4 phút mất chừng 15–20 phút).</p>
+    <p>Mô hình: Hybrid Transformer Demucs (htdemucs) của Meta, bản chuyển ONNX từ dự án demucs-js. Trọng số mô hình chỉ dành cho mục đích cá nhân và nghiên cứu.</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const SR = 44100, MAX_SEC = 600;
+  let worker = null, ready = false, audio = null, fileBase = 'bai-hat', results = null;
+  const urls = [];
+
+  // ---------- helpers ----------
+  const fmtTime = (s) => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const fmtMB = (b) => (b / 1048576).toFixed(1) + ' MB';
+  function showErr(msg) { $('err').textContent = msg; $('err').hidden = !msg; }
+  function setProgress(text, frac, right) {
+    $('progress').hidden = false; $('pText').textContent = text;
+    $('pBar').style.width = (Math.max(0, Math.min(1, frac)) * 100).toFixed(1) + '%';
+    $('pRight').textContent = right || '';
+  }
+
+  function wav16(channels) {
+    const n = channels[0].length, ch = channels.length, data = n * ch * 2;
+    const buf = new ArrayBuffer(44 + data), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + data, true); str(8, 'WAVE'); str(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, ch, true);
+    v.setUint32(24, SR, true); v.setUint32(28, SR * ch * 2, true); v.setUint16(32, ch * 2, true);
+    v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, data, true);
+    const out = new Int16Array(buf, 44);
+    for (let i = 0, k = 0; i < n; i++) for (let c = 0; c < ch; c++, k++) {
+      const s = Math.max(-1, Math.min(1, channels[c][i])); out[k] = s < 0 ? s * 32768 : s * 32767;
+    }
+    return new Uint8Array(buf);
+  }
+
+  // Minimal ZIP writer (stored, no compression).
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(u8) { let c = 0xffffffff; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+  function zip(files) {
+    const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+    for (const f of files) {
+      const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+      const h = new DataView(new ArrayBuffer(30));
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
+      h.setUint32(14, crc, true); h.setUint32(18, size, true); h.setUint32(22, size, true); h.setUint16(26, name.length, true);
+      parts.push(new Uint8Array(h.buffer), name, f.data);
+      const c = new DataView(new ArrayBuffer(46));
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+      c.setUint32(16, crc, true); c.setUint32(20, size, true); c.setUint32(24, size, true); c.setUint16(28, name.length, true);
+      c.setUint32(42, off, true);
+      central.push(new Uint8Array(c.buffer), name);
+      off += 30 + name.length + size;
+    }
+    const cSize = central.reduce((n, p) => n + p.length, 0);
+    const e = new DataView(new ArrayBuffer(22));
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+    e.setUint32(12, cSize, true); e.setUint32(16, off, true);
+    return new Blob([...parts, ...central, new Uint8Array(e.buffer)]);
+  }
+
+  function drawWave(canvas, channels) {
+    const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth || 600, h = canvas.clientHeight || 72;
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    const g = canvas.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
+    g.fillStyle = getComputedStyle(canvas.closest('.stem')).getPropertyValue('--c').trim() || '#888';
+    const mid = h / 2;
+    if (!channels) { // placeholder pattern before any result
+      for (let x = 0; x < w; x += 3) { const a = (0.25 + 0.2 * Math.sin(x / 13) * Math.sin(x / 47)) * h * 0.5; g.fillRect(x, mid - a / 2, 2, a); }
+      return;
+    }
+    const n = channels[0].length, step = Math.max(1, Math.floor(n / w));
+    for (let x = 0; x < w; x++) {
+      let peak = 0; const s0 = Math.floor(x * n / w);
+      for (let i = s0; i < Math.min(n, s0 + step); i += 4) { const v = Math.abs(channels[0][i]) + Math.abs(channels[1][i]); if (v > peak) peak = v; }
+      const a = Math.max(1, Math.min(1, peak / 2) * (h - 8));
+      g.fillRect(x, mid - a / 2, 1, a);
+    }
+  }
+  document.querySelectorAll('canvas.wave').forEach((c) => drawWave(c, null));
+
+  // ---------- worker ----------
+  async function getWorker() {
+    if (worker) return worker;
+    const base = new URL('./', document.baseURI).href;
+    const w = new Worker(new URL('dist/worker.js', base), { type: 'module' });
+    worker = w;
+    return new Promise((resolve, reject) => {
+      w.onmessage = ({ data }) => {
+        if (data.type === 'load') setProgress('Đang tải mô hình AI (chỉ lần đầu)…', data.done / data.total * 0.999, fmtMB(data.done) + ' / ' + fmtMB(data.total));
+        else if (data.type === 'status') setProgress(data.text, 1, '');
+        else if (data.type === 'ready') { ready = true; resolve(w); }
+        else if (data.type === 'error') { worker = null; w.terminate(); reject(new Error(data.message)); }
+      };
+      w.onerror = (e) => { worker = null; reject(new Error(e.message || 'Không khởi chạy được bộ xử lý.')); };
+      w.postMessage({ type: 'init', base, preferGpu: $('useGpu').checked });
+    });
+  }
+
+  // ---------- input ----------
+  async function loadFile(file) {
+    showErr(''); $('go').disabled = true;
+    $('fileRow').hidden = false; $('fileName').textContent = file.name; $('fileMeta').textContent = 'đang đọc…';
+    fileBase = file.name.replace(/\.[^.]+$/, '') || 'bai-hat';
+    try {
+      const buf = await file.arrayBuffer();
+      const ctx = new OfflineAudioContext(2, 1, SR);
+      const decoded = await ctx.decodeAudioData(buf);
+      if (decoded.duration > MAX_SEC) throw new Error('Bài này dài ' + fmtTime(decoded.duration) + '. Hãy chọn file ngắn hơn 10 phút.');
+      const l = decoded.getChannelData(0), r = decoded.numberOfChannels > 1 ? decoded.getChannelData(1) : l;
+      audio = [new Float32Array(l), new Float32Array(r)];
+      $('fileMeta').textContent = fmtTime(decoded.duration) + ' · ' + (decoded.numberOfChannels > 1 ? 'stereo' : 'mono') + ' · ' + fmtMB(file.size);
+      $('go').disabled = false;
+    } catch (e) {
+      audio = null; $('fileMeta').textContent = '';
+      showErr(e.message && e.message.startsWith('Bài') ? e.message : 'Trình duyệt không đọc được file này. Hãy thử MP3 hoặc WAV.');
+    }
+  }
+  const drop = $('drop'), input = $('fileInput');
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+  input.addEventListener('change', () => input.files[0] && loadFile(input.files[0]));
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+
+  // ---------- run ----------
+  $('go').addEventListener('click', async () => {
+    if (!audio) return;
+    showErr(''); $('go').disabled = true; drop.style.pointerEvents = 'none';
+    try {
+      const w = await getWorker();
+      const overlap = parseFloat(document.querySelector('input[name=q]:checked').value);
+      setProgress('Đang tách…', 0, '');
+      const res = await new Promise((resolve, reject) => {
+        w.onmessage = ({ data }) => {
+          if (data.type === 'progress') {
+            const left = data.step ? data.elapsed / data.step * (data.total - data.step) / 1000 : 0;
+            setProgress('Đang tách… đoạn ' + data.step + '/' + data.total, data.step / data.total, data.step ? 'còn khoảng ' + fmtTime(left) : '');
+          } else if (data.type === 'done') resolve(data);
+          else if (data.type === 'error') reject(new Error(data.message));
+        };
+        w.postMessage({ type: 'run', channelData: audio.map((c) => c.slice()), overlap });
+      });
+      showResults(res);
+      setProgress('Xong sau ' + fmtTime(res.seconds) + (res.backend === 'webgpu' ? ' (GPU)' : ' (CPU)'), 1, '');
+    } catch (e) {
+      $('progress').hidden = true;
+      showErr('Có lỗi khi tách: ' + e.message);
+    } finally {
+      $('go').disabled = !audio; drop.style.pointerEvents = '';
+    }
+  });
+
+  function showResults(res) {
+    urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
+    results = { vocals: wav16(res.vocals), inst: wav16(res.inst) };
+    for (const [id, key, ch] of [['stemVocal', 'vocals', res.vocals], ['stemInst', 'inst', res.inst]]) {
+      const el = $(id); el.classList.remove('empty');
+      el.querySelector('.hint').hidden = true;
+      const u = URL.createObjectURL(new Blob([results[key]], { type: 'audio/wav' })); urls.push(u);
+      const a = el.querySelector('audio'); a.src = u; a.hidden = false;
+      el.querySelector('.actions').hidden = false;
+      el.querySelector('[data-info]').textContent = fmtMB(results[key].length);
+      drawWave(el.querySelector('canvas'), ch);
+    }
+    $('dlBoth').hidden = false;
+  }
+
+  // ---------- downloads ----------
+  // Inside claude.ai the page must ask the viewer through the downloads capability,
+  // which accepts .zip (not .wav); elsewhere a plain link works.
+  let dlCap = null;
+  const capReady = (window.claude && typeof window.claude.use === 'function')
+    ? window.claude.use('downloads').then((d) => { dlCap = d; }).catch(() => {}) : Promise.resolve();
+
+  async function save(name, files) {
+    await capReady;
+    if (dlCap) {
+      try { await dlCap.save({ filename: name + '.zip', data: zip(files) }); }
+      catch (e) { if (e && e.code !== 'declined') showErr('Không lưu được file (' + (e.code || e.message) + ').'); }
+      return;
+    }
+    for (const f of files) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([f.data], { type: 'audio/wav' })); a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+  }
+  document.querySelectorAll('[data-dl]').forEach((b) => b.addEventListener('click', () => {
+    if (!results) return;
+    const key = b.dataset.dl, label = key === 'vocals' ? 'vocal' : 'nhac-nen';
+    save(fileBase + ' - ' + label, [{ name: fileBase + ' - ' + label + '.wav', data: results[key] }]);
+  }));
+  $('dlBoth').addEventListener('click', () => {
+    if (!results) return;
+    save(fileBase + ' - tach', [
+      { name: fileBase + ' - vocal.wav', data: results.vocals },
+      { name: fileBase + ' - nhac-nen.wav', data: results.inst },
+    ]);
+  });
+  window.addEventListener('resize', () => { if (!results) document.querySelectorAll('canvas.wave').forEach((c) => drawWave(c, null)); });
+})();
+</script>
